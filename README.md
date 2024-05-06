@@ -19,9 +19,6 @@ We maintained the directory structure provided when the repo was initialized.
 - Code folder contains R code files
 - Data folder contains data (stored on Dropbox and added locally rather than being stored on GitHub), and two code files: one generates the interest rate data that includes all California zipcodes (Note: this is the only file that contains Python code, and is optional to run to obtain the data) and the other merges all individual datasets into one dataset that is used to fit our models. 
     - The Data/Data_info subfolder contains supplimental text explaining data details and html files from EDA
-- The Progress Report and Final Report folders contain the pdf files of their respective submissions
-- The Other Resources folder contains links to our meeting minutes
-- The Vizualizations folder remains empty (we chose not to stucture our project to use this folder)
 
 ### Data Source
 **Final Combined Dataset:** Download modified_all_data.csv from [Dropbox](https://www.dropbox.com/scl/fi/j83hxjqj6vtdw5tluniq6/modified_all_data.csv?rlkey=rkxvcj2hqg0nawc0jr3mmi9u9&dl=0), place in "Data" folder on your local copy of the repo.
