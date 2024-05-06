@@ -1,4 +1,4 @@
-# Location-Based House Price Prediction Using Socioeconomic Factors
+# Location-Based House Price Prediction
 Team 1's group project GitHub repository for MGT 6203 (Canvas) Spring of 2024 semester. 
 
 ### Project Topic
