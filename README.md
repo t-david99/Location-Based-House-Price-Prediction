@@ -15,7 +15,6 @@ Phat Ngo: pngo36@gatech.edu \
 Allison Weber: aweber47@gatech.edu 
 
 ### Directory Structure:
-We maintained the directory structure provided when the repo was initialized. 
 - Code folder contains R code files
 - Data folder contains data (stored on Dropbox and added locally rather than being stored on GitHub), and two code files: one generates the interest rate data that includes all California zipcodes (Note: this is the only file that contains Python code, and is optional to run to obtain the data) and the other merges all individual datasets into one dataset that is used to fit our models. 
     - The Data/Data_info subfolder contains supplimental text explaining data details and html files from EDA
