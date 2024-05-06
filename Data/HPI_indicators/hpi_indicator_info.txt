@@ -1,0 +1,30 @@
+All files in 1 folder on Dropbox: https://www.dropbox.com/scl/fo/5kq5zjpfqui1g5bxm37jv/h?rlkey=cujjyrdxpfyigaq9bz4iepunp&dl=0 
+
+
+Indicators that have numerator + denominator + se: above_poverty, 
+
+insured = insured adults
+H2O_contaim = drinking water contamination
+Preschool = preschool enrollment
+uncrowded = uncrowded housing
+
+All indicators calculated for 2019 unless otherwise indicated.
+
+Census response (rate): 2020
+Diesel PM: 2016
+Economic domain: 2021
+Education domain: 2021
+Healthcare access domain: 2021
+House repair (housing habitablility repair): 2017
+Housing (housing domain): 2021
+HPI score: 2022
+Neighborhood domain: 2021
+Rent Severe (low-income rent severe housing cost burden): 2017
+Own Severe (low-income homeowner severe housing cost burden): 2017
+Ozone: 2018
+PM 2.5: 2017
+Park access: 2017
+Retail (density): 2021
+Social (domain): 2021
+Tree canopy: 2011
+Voting: 2020

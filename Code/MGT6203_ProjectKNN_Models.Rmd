@@ -1,0 +1,393 @@
+---
+title: "House Price Prediction with KNN Regression Models"
+author: "Tyler David"
+date: "2024-03-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in Data
+
+```{r}
+rm(list=ls())
+
+df <- read.csv("../Data/modified_all_data.csv", header = TRUE)
+
+head(df)
+```
+
+## Exploratory Data Analysis
+
+### EDA Part 1: Data Structure
+
+The columns State, City, Metro, and County are of character data types. All remaining columns are either of numerical or integer data type.
+
+```{r}
+str(df)
+```
+
+### EDA Part 2: House Price Data by County, City, and Metropolitan Area
+
+```{r}
+library(dplyr)
+
+# mean house prices by county
+price_by_county <- df %>%
+                      group_by(County) %>%
+                      summarise(
+                        mean_price = mean(Six.Month.Averages)
+                      )
+
+# mean house prices by city
+price_by_city <- df %>%
+                    group_by(City) %>%
+                    summarise(
+                        mean_price = mean(Six.Month.Averages)
+                      )
+
+# mean house prices by metropolitan area
+price_by_metro <- df %>%
+                     group_by(Metro) %>%
+                     summarise(
+                        mean_price = mean(Six.Month.Averages)
+                      )
+
+# least and most average expensive house prices by county
+bottom_5_by_county <- (price_by_county %>% arrange(mean_price))[1:5,]
+for (i in 1:5){
+  if (i == 1){
+    cat("\nLowest Average House Prices by County\n",
+        "-------------------------------------\n", i, ".",
+        bottom_5_by_county[[i, "County"]], "\n")
+  }
+  else{
+    cat(i, ".", bottom_5_by_county[[i, "County"]], "\n")
+  }
+}
+top_5_by_county <- (price_by_county %>% arrange(desc(mean_price)))[1:5,]
+for (i in 1:5){
+  if (i == 1){
+    cat("\nHighest Average House Prices by County\n",
+        "--------------------------------------\n", i, ".",
+        top_5_by_county[[i, "County"]], "\n")
+  }
+  else{
+    cat(i, ".", top_5_by_county[[i, "County"]], "\n")
+  }
+}
+
+# least and most expensive average house prices by city
+bottom_5_by_city <- (price_by_city %>% arrange(mean_price))[1:5,]
+for (i in 1:5){
+  if (i == 1){
+    cat("\nLowest Average House Prices by City\n",
+        "-----------------------------------\n", i, ".",
+        bottom_5_by_city[[i, "City"]], "\n")
+  }
+  else{
+    cat(i, ".", bottom_5_by_city[[i, "City"]], "\n")
+  }
+}
+
+top_5_by_city <- (price_by_city %>% arrange(desc(mean_price)))[1:5,]
+for (i in 1:5){
+  if (i == 1){
+    cat("\nHighest Average House Prices by City\n",
+        "------------------------------------\n", i, ".",
+        top_5_by_city[[i, "City"]], "\n")
+  }
+  else{
+    cat(i, ".", top_5_by_city[[i, "City"]], "\n")
+  }
+}
+
+# least and most expensive average house prices by metropolitan area
+bottom_5_by_metro <- (price_by_metro %>% arrange(mean_price))[1:5,]
+for (i in 1:5){
+  if (i == 1){
+    cat("\nLowest Average House Prices by Metropolitan Area\n",
+        "------------------------------------------------\n", i, ".",
+        bottom_5_by_metro[[i, "Metro"]], "\n")
+  }
+  else{
+    cat(i, ".", bottom_5_by_metro[[i, "Metro"]], "\n")
+  }
+}
+
+top_5_by_metro <- (price_by_metro %>% arrange(desc(mean_price)))[1:5,]
+for (i in 1:5){
+  if (i == 1){
+    cat("\nHighest Average House Prices by Metropolitan Area\n",
+        "-------------------------------------------------\n", i, ".",
+        top_5_by_metro[[i, "Metro"]], "\n")
+  }
+  else{
+    cat(i, ".", top_5_by_metro[[i, "Metro"]], "\n")
+  }
+}
+
+```
+
+```{r}
+# mean house price distributions by county, city, and metropolitan area
+hist(price_by_county$mean_price)
+hist(price_by_city$mean_price)
+hist(price_by_metro$mean_price)
+
+```
+
+## Data Preparation
+
+```{r}
+# for reproducible results
+set.seed(1)
+
+df <- df %>% select(-c("zipcode", "State", "City", "Metro", "County"))
+
+# KNN requires scaled data, so we will scale all the independent variables
+df <- data.frame(cbind(df[,1], scale(df[,2:ncol(df)])))
+colnames(df)[1] <- "Six.Month.Averages"
+
+# 80/20 train-test spit
+train_inds <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(0.8,0.2))
+train_df <- df[train_inds, ]
+test_df <- df[!train_inds, ]
+
+```
+
+## Fit Full KNN Model
+
+```{r}
+library(caret)
+
+# for reproducible results
+set.seed(1)
+
+# 10-fold cross-validation
+cv <- trainControl(method="cv", number=10)
+
+# hyperparameters to test
+hyperparams <- expand.grid(k = seq(3, 55, 2))
+
+# grid search with 10-fold cross validation
+knn_full <- train(Six.Month.Averages~., data=train_df, method="knn", metric="RMSE", trControl=cv, tuneGrid=hyperparams)
+plot(knn_full, main="Grid Search Results for Full KNN Model", xlab="k (Number of Neighbors)", ylab="Root Mean Squared Error")
+cat("Through grid search with 10-fold cross validation, the optimal value of k for the full KNN model is", knn_full$bestTune[[1]])
+knn_full_model <- knn_full$finalModel
+
+```
+
+## Define Function of Evaluation Metrics
+
+To assess the quality of each k-Nearest Neighbor Regression model, we will use the following evaluation metrics:
+
+**1. Root Mean Squared Error:** this metric denotes the average distance between each of the model's predicted response values $Y_i^*$ and true response values $Y_i$:
+
+$$RMSE = \sqrt{\frac{\sum_{i=1}^n (Y_i - Y_i^*)^2}{n}}$$
+where $n$ is the number of data points.
+
+**2. R-Squared (Coefficient of Determination):** this metric returns the proportion of variance of the response $Y$ that can be explained by the regression model:
+
+$$R^2 = 1 - \frac{\sum_{i=1}^n (Y_i - Y_i^*)^2}{\sum_{i=1}^n (Y_i - \bar{Y})^2} = 1 - \frac{SSE}{SST}$$
+
+where $n$ is the total number of data points, $Y_i^*$ is the model's predicted response value, $Y_i$ is the true response value, and $\bar{Y}$ is the mean of the true responses.
+
+**3. Adjusted R-Squared:** this metric returns proportion of variance of the response $Y$ that can be explained by the regression model, but penalizes for more predictors being added to the model:
+
+$$R_{adj}^2 = 1 - \frac{(1-R^2)(n-1)}{n-p-1}$$
+
+where $n$ is the number of data points and $p$ is the number of predictors.
+
+**4. Mean Absolute Percentage Error:** this metric denotes the average deviance between each predicted response value $Y_i^*$ and the true response value $Y_i$ as a percentage of the associated $Y_i$:
+
+$$MAPE = \frac{1}{n}\sum_{i=1}^n\frac{|Y_i - Y_i^*|}{|Y_i|}$$
+
+where $n$ is the number of data points.
+
+**5. Mean Absolute Error:** this metric denotes the average deviance between each predicted response value $Y_i^*$ and the true response value $Y_i$:
+
+$$MAE = \frac{\sum_{i=1}^n |Y_i - Y_i^*|}{n}$$
+
+where $n$ is the number of data points.
+
+
+```{r}
+eval_metrics <- function(model, test_data){
+    predictions <- predict(model, newdata=test_data %>% dplyr::select(-c("Six.Month.Averages")))
+
+    # root mean squared error
+    rmse <-sqrt(mean((predictions - test_data$Six.Month.Averages)^2))
+
+    # sum of squared error
+    sse <- sum((predictions - test_data$Six.Month.Averages)^2)
+
+    # sum of squared total
+    sst <- sum((predictions - mean(test_data$Six.Month.Averages))^2)
+
+    # r-squared
+    r_squared <- 1 - (sse/sst)
+
+    # adjusted r-squared
+    r_squared_adj <- 1 - ((1-r_squared)*(nrow(test_data) - 1)/(nrow(test_data)-ncol(test_data)-2))
+
+    # mean absolute percentage error
+    mape <- sum(abs(test_data$Six.Month.Averages - predictions)/abs(test_data$Six.Month.Averages))/nrow(test_data)
+    
+    # mean absolute error
+    mae <- sum(abs(test_data$Six.Month.Averages - predictions))/nrow(test_data)
+    
+    return (list(rmse, r_squared, r_squared_adj, mape, mae))
+}
+```
+
+## Full KNN Model Test Results
+
+```{r}
+full_metrics <- eval_metrics(knn_full_model, test_df)
+
+cat("Full KNN Model Metrics\n Root Mean Squared Error:", full_metrics[[1]], "\n R-Squared:", full_metrics[[2]],
+    "\n Adjusted R-Squared:", full_metrics[[3]], "\n Mean Absolute Percentage Error:", full_metrics[[4]], "\n Mean Absolute Error:", full_metrics[[5]])
+
+```
+
+## Fit KNN Model Using Selected Variables from Stepwise Regression
+
+```{r}
+# for reproducible results
+set.seed(1)
+
+# non-zero coefficients of the stepwise regression model and our dependent variable
+nonzero_coef_stepwise <- c("Six.Month.Averages", "economic", "housing", "per_capita_income", "house_repair", "bachelorsed", "neighborhood", "uncrowded",
+"above_poverty", "Unemployment.Rate.16up", "voting", "healthcare_access", "hpi_score", "Interest_rate_low_am", "Interest_rate_reg_am",
+"own_severe", "tree_canopy", "H2O_contam", "ozone", "active_commuting", "employed", "Population.Male.Ratio", "Unemployment.Rate.20to64",
+"Median.Earnings.25up.Female", "Unemployment.Rate.Below.Poverty.Level.", "Population.Total")
+
+# train and test sets with only the variables in nonzero_coef_stepwise
+stepwise_train_df <- train_df %>% dplyr::select(nonzero_coef_stepwise)
+stepwise_test_df <- test_df %>% dplyr::select(nonzero_coef_stepwise)
+
+# grid search with 10-fold cross validation
+knn_stepwise_vars <- train(Six.Month.Averages~., data=stepwise_train_df, method="knn", metric="RMSE", trControl=cv, tuneGrid=hyperparams)
+plot(knn_stepwise_vars, main="Grid Search Results for KNN Model (Non-Zero Stepwise Regression Coefficients)", xlab="k (Number of Neighbors)", ylab="Root Mean Squared Error")
+cat("10-fold cross validation suggests that the optimal k for the KNN model using the non-zero stepwise regression coefficients is", knn_stepwise_vars$bestTune[[1]])
+knn_stepwise_vars_model <- knn_stepwise_vars$finalModel
+
+```
+
+## KNN Model Using Selected Variables from Stepwise Regression Test results
+
+```{r}
+stepwise_vars_metrics <- eval_metrics(knn_stepwise_vars_model, stepwise_test_df)
+
+cat("KNN Model Using Nonzero Stepwise Regression Coefficients Metrics\n Root Mean Squared Error:", stepwise_vars_metrics[[1]],
+"\n R-Squared:", stepwise_vars_metrics[[2]], "\n Adjusted R-Squared:", stepwise_vars_metrics[[3]], "\n Mean Absolute Percentage Error:",
+stepwise_vars_metrics[[4]], "\n Mean Absolute Error:", stepwise_vars_metrics[[5]])
+```
+
+## Fit KNN Model Using Selected Variables from LASSO Regression
+
+```{r}
+# for reproducible results
+set.seed(1)
+
+# non-zero coefficients of the stepwise regression model and our dependent variable
+nonzero_coef_lasso <- c("Six.Month.Averages", "economic", "per_capita_income", "house_repair", "bachelorsed", "neighborhood", "uncrowded",
+"Unemployment.Rate.16up", "voting", "healthcare_access", "automobile_access", "Interest_rate_low_am", "education", "pm25", "retail",
+"own_severe", "rent_severe", "tree_canopy", "H2O_contam", "ozone", "employed", "Population.Male.Ratio", "Unemployment.Rate.Disability",
+"Unemployment.Rate.20to64Female", "Median.Earnings.25up.Female", "Median.Earnings.25up.Male", "Labor.Force.Rate.16up",
+"insured", "Unemployment.Rate.Below.Poverty.Level.", "Population.Total", "Unemployment.Rate.Above.Poverty.Level", "Employment.Ratio.16upFemale",
+"diesel_PM", "homeownership")
+
+# train and test sets with only the variables in nonzero_coef_stepwise
+lasso_train_df <- train_df %>% dplyr::select(nonzero_coef_lasso)
+lasso_test_df <- test_df %>% dplyr::select(nonzero_coef_lasso)
+
+# grid search with 10-fold cross validation
+knn_lasso_vars <- train(Six.Month.Averages~., data=lasso_train_df, method="knn", metric="RMSE", trControl=cv, tuneGrid=hyperparams)
+plot(knn_lasso_vars, main="Grid Search Results for KNN Model (Non-Zero LASSO Regression Coefficients)", xlab="k (Number of Neighbors)", ylab="Root Mean Squared Error")
+cat("10-fold cross validation suggests that the optimal k for the KNN model using the non-zero LASSO regression coefficients is", knn_lasso_vars$bestTune[[1]])
+knn_lasso_vars_model <- knn_lasso_vars$finalModel
+
+```
+
+## KNN Model Using Selected Variables from LASSO Regression Test results
+
+```{r}
+lasso_vars_metrics <- eval_metrics(knn_lasso_vars_model, lasso_test_df)
+
+cat("KNN Model Using Nonzero LASSO Regression Coefficients Metrics\n Root Mean Squared Error:", lasso_vars_metrics[[1]],
+"\n R-Squared:", lasso_vars_metrics[[2]], "\n Adjusted R-Squared:", lasso_vars_metrics[[3]], "\n Mean Absolute Percentage Error:",
+lasso_vars_metrics[[4]], "\n Mean Absolute Error:",  lasso_vars_metrics[[5]])
+```
+
+## Comparison of Results (Listed From Best to Worst Evaluation Metric)
+
+- **Root Mean Squared Error:**
+    1. Full KNN Model (219761.3)
+    2. LASSO KNN Model (230657.7)
+    3. Stepwise KNN Model (251087.8)
+
+- **R-Squared:**
+    1. Full KNN Model (0.793)
+    2. LASSO KNN Model (0.736)
+    3. Stepwise KNN Model (0.652)
+
+- **Adjusted R-Squared:**
+    1. Full KNN Model (0.740)
+    2. LASSO KNN Model (0.692)
+    3. Stepwise KNN Model (0.609) 
+
+- **Mean Absolute Percentage Error:**
+    1. Full KNN Model (0.16296)
+    2. Stepwise KNN Model (0.16516)
+    3. LASSO KNN Model (0.17627)
+
+- **Mean Absolute Error:**
+    1. Full KNN Model (135907.4)
+    2. LASSO KNN Model (142033.8)
+    3. Stepwise KNN Model (145741.2)
+
+```{r}
+library(ggplot2)
+
+# save all results in one data frame
+all_metrics <- data.frame(
+  knn_model = c("Full", "Stepwise", "LASSO"),
+  rmse = c(full_metrics[[1]], stepwise_vars_metrics[[1]], lasso_vars_metrics[[1]]),
+  r_squared = c(full_metrics[[2]], stepwise_vars_metrics[[2]], lasso_vars_metrics[[2]]),
+  r_squared_adj = c(full_metrics[[3]], stepwise_vars_metrics[[3]], lasso_vars_metrics[[3]]),
+  mape = c(full_metrics[[4]], stepwise_vars_metrics[[4]], lasso_vars_metrics[[4]]),
+  mae = c(full_metrics[[5]], stepwise_vars_metrics[[5]], lasso_vars_metrics[[5]])
+        )
+
+# barplots comparing rmse of knn models
+p1 <- ggplot(all_metrics, aes(knn_model, rmse)) + geom_col(aes(fill=knn_model)) + 
+  xlab("KNN Model") + ylab("Root Mean Squared Error") + labs(fill= "KNN Model")  + 
+  ggtitle("Root Mean Squared Error by KNN Model")
+
+# barplots comparing r-squared of knn models
+p2 <- ggplot(all_metrics, aes(knn_model, r_squared)) + geom_col(aes(fill=knn_model)) + 
+  xlab("KNN Model") + ylab("R-Squared") + labs(fill= "KNN Model") +
+  ggtitle("R-Squared by KNN Model")
+
+# barplots comparing adjusted r-squared of knn models
+p3 <- ggplot(all_metrics, aes(knn_model, r_squared_adj)) + geom_col(aes(fill=knn_model)) + 
+  xlab("KNN Model") + ylab("Adjusted R-Squared") + labs(fill= "KNN Model") +
+  ggtitle("Adjusted R-Squared by KNN Model")
+
+# barplots comparing mean absolute percentage error of knn models
+p4 <- ggplot(all_metrics, aes(knn_model, mape)) + geom_col(aes(fill=knn_model)) + 
+  xlab("KNN Model") + ylab("Mean Absolute Percentage Error") + labs(fill= "KNN Model") + 
+  ggtitle("Mean Absolute Percentage Error by KNN Model")
+
+# barplots comparing mean absolute error of knn models
+p5 <- ggplot(all_metrics, aes(knn_model, mae)) + geom_col(aes(fill=knn_model)) + 
+  xlab("KNN Model") + ylab("Mean Absolute Error") + labs(fill= "KNN Model") + 
+  ggtitle("Mean Absolute Error by KNN Model")
+
+
+ 
+```

@@ -1,0 +1,67 @@
+---
+title: "MGT6203 Merge All Datasets"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## HPI Data
+
+```{r}
+hpi_df <- read.csv("../Data/HPI_clean.csv", header = TRUE)
+head(hpi_df)
+cat(dim(hpi_df)[1], "rows,", dim(hpi_df)[2], "columns\n")
+
+```
+
+## Zillow Data
+
+```{r}
+zillow_df <- read.csv("../Data/Zillow Data (6 Month Avg).csv", header=TRUE)
+names(zillow_df)[1] <- "zipcode"
+names(zillow_df)[6] <- "Six Month Averages"
+head(zillow_df)
+cat(dim(zillow_df)[1], "rows,", dim(zillow_df)[2], "columns\n")
+
+```
+
+## Census Data
+
+```{r}
+census_df <- read.csv("../Data/merged_census_removed_columns.csv", header=TRUE)
+census_df <- census_df[6:nrow(census_df),] # first 5 zipcodes were Nevada zipcodes
+names(census_df)[1] <- "zipcode"
+head(census_df)
+cat(dim(census_df)[1], "rows,", dim(census_df)[2], "columns")
+
+```
+
+## Median Interest Rate Data
+
+```{r}
+interest_rate_df <- read.csv("../Data/median_interest_rate_all_zipcodes.csv", header=TRUE)
+head(interest_rate_df)
+cat(dim(interest_rate_df)[1], "rows,", dim(interest_rate_df)[2], "columns")
+
+```
+
+## Combine All Datasets
+
+```{r}
+# merge datasets
+zh_merged <- merge(zillow_df, hpi_df, by="zipcode")
+zhc_merged <- merge(zh_merged, census_df, by="zipcode")
+df <- merge(zhc_merged, interest_rate_df, by="zipcode")
+head(df)
+cat(dim(df)[1], "rows,", dim(df)[2], "columns")
+
+```
+
+## Save Merged Dataset as csv File
+
+```{r}
+#write.csv(df, "all_data.csv", row.names=FALSE)
+
+```
