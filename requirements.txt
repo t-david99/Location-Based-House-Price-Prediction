@@ -6,3 +6,9 @@ caTools
 caret
 leaps
 MASS
+ggplot2
+caret
+Matrix
+rpart
+rpart.plot
+randomForest
